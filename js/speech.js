@@ -3,7 +3,6 @@ let isListening = false;
 let onResultCallback = null;
 let onErrorCallback = null;
 let onStateChangeCallback = null;
-let fullTranscript = '';
 
 function initSpeech() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -16,29 +15,24 @@ function initSpeech() {
   recognition.maxAlternatives = 1;
 
   recognition.onresult = (event) => {
-    let interim = '';
-    let finalPart = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
+    let finalTranscript = '';
+    let interimTranscript = '';
+    // Rebuild entire transcript from ALL results (avoids duplication)
+    for (let i = 0; i < event.results.length; i++) {
       const transcript = event.results[i][0].transcript;
       if (event.results[i].isFinal) {
-        finalPart += transcript;
+        finalTranscript += transcript + ' ';
       } else {
-        interim += transcript;
+        interimTranscript += transcript;
       }
     }
-    if (finalPart) fullTranscript += finalPart + ' ';
-    const display = fullTranscript + interim;
-    if (onResultCallback) onResultCallback(display.trim(), false);
+    const display = (finalTranscript + interimTranscript).trim();
+    if (onResultCallback) onResultCallback(display, false);
   };
 
   recognition.onend = () => {
-    if (isListening) {
-      try { recognition.start(); } catch {}
-      return;
-    }
-    if (onResultCallback && fullTranscript.trim()) {
-      onResultCallback(fullTranscript.trim(), true);
-    }
+    // Don't auto-restart — causes duplication on mobile
+    isListening = false;
     if (onStateChangeCallback) onStateChangeCallback(false);
   };
 
@@ -62,7 +56,6 @@ function startListening(onResult, onError, onStateChange) {
   onResultCallback = onResult;
   onErrorCallback = onError;
   onStateChangeCallback = onStateChange;
-  fullTranscript = '';
 
   try {
     recognition.start();

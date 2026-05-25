@@ -128,6 +128,7 @@ function cleanTitle(originalText, parsed) {
   ];
   removePatterns.forEach(p => { title = title.replace(p, ''); });
   title = title.replace(/\s+/g, ' ').replace(/^[\s,.\-]+|[\s,.\-]+$/g, '').trim();
+  if (title.length > 120) title = title.substring(0, 120).replace(/\s+\S*$/, '');
   if (title.length > 0) title = title.charAt(0).toUpperCase() + title.slice(1);
   return title || originalText.trim();
 }
