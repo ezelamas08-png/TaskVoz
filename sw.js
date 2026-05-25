@@ -1,8 +1,6 @@
-const CACHE_NAME = 'taskvoz-v1';
-const ASSETS = ['/', '/index.html', '/css/styles.css', '/js/db.js', '/js/nlp.js', '/js/speech.js', '/js/app.js'];
+const CACHE_NAME = 'taskvoz-v2';
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
   self.skipWaiting();
 });
 

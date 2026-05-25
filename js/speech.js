@@ -3,6 +3,7 @@ let isListening = false;
 let onResultCallback = null;
 let onErrorCallback = null;
 let onStateChangeCallback = null;
+let fullTranscript = '';
 
 function initSpeech() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -10,35 +11,42 @@ function initSpeech() {
 
   recognition = new SpeechRecognition();
   recognition.lang = 'es-AR';
-  recognition.continuous = false;
+  recognition.continuous = true;
   recognition.interimResults = true;
   recognition.maxAlternatives = 1;
 
   recognition.onresult = (event) => {
     let interim = '';
-    let final = '';
+    let finalPart = '';
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const transcript = event.results[i][0].transcript;
       if (event.results[i].isFinal) {
-        final += transcript;
+        finalPart += transcript;
       } else {
         interim += transcript;
       }
     }
-    if (onResultCallback) onResultCallback(final || interim, !!final);
+    if (finalPart) fullTranscript += finalPart + ' ';
+    const display = fullTranscript + interim;
+    if (onResultCallback) onResultCallback(display.trim(), false);
   };
 
   recognition.onend = () => {
-    isListening = false;
+    if (isListening) {
+      try { recognition.start(); } catch {}
+      return;
+    }
+    if (onResultCallback && fullTranscript.trim()) {
+      onResultCallback(fullTranscript.trim(), true);
+    }
     if (onStateChangeCallback) onStateChangeCallback(false);
   };
 
   recognition.onerror = (event) => {
+    if (event.error === 'no-speech' || event.error === 'aborted') return;
     isListening = false;
     if (onStateChangeCallback) onStateChangeCallback(false);
-    if (event.error !== 'no-speech' && event.error !== 'aborted') {
-      if (onErrorCallback) onErrorCallback(event.error);
-    }
+    if (onErrorCallback) onErrorCallback(event.error);
   };
 
   return true;
@@ -54,6 +62,7 @@ function startListening(onResult, onError, onStateChange) {
   onResultCallback = onResult;
   onErrorCallback = onError;
   onStateChangeCallback = onStateChange;
+  fullTranscript = '';
 
   try {
     recognition.start();
@@ -70,9 +79,9 @@ function startListening(onResult, onError, onStateChange) {
 }
 
 function stopListening() {
-  if (recognition && isListening) {
-    recognition.stop();
+  if (recognition) {
     isListening = false;
+    recognition.stop();
   }
 }
 

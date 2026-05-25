@@ -132,10 +132,14 @@ async function toggleTask(id) {
 // ===== VOICE =====
 function openVoiceModal() {
   editingTaskId = null;
-  document.getElementById('voice-text').innerHTML = '<span class="placeholder">Presiona el boton y habla...</span>';
+  document.getElementById('voice-edit-area').style.display = 'none';
+  document.getElementById('voice-edit-text').value = '';
+  document.getElementById('voice-live-text').innerHTML = '<span class="placeholder">Presiona Grabar y dicta tu tarea...</span>';
+  document.getElementById('voice-live-text').style.display = 'block';
   document.getElementById('voice-detected').innerHTML = '';
   document.getElementById('voice-detected').style.display = 'none';
   document.getElementById('voice-save-btn').style.display = 'none';
+  document.getElementById('voice-process-btn').style.display = 'none';
   document.getElementById('voice-status').textContent = '';
   openModal('voice-modal');
 }
@@ -148,18 +152,33 @@ function toggleVoiceRecording() {
     stopListening();
     btn.classList.remove('recording');
     btn.innerHTML = '<span class="mic-icon">&#127908;</span> Grabar';
-    if (voiceTranscript) processVoiceResult(voiceTranscript);
+    document.getElementById('voice-status').textContent = 'Grabacion detenida. Podes editar el texto.';
+    if (voiceTranscript) {
+      document.getElementById('voice-live-text').style.display = 'none';
+      document.getElementById('voice-edit-area').style.display = 'block';
+      document.getElementById('voice-edit-text').value = voiceTranscript;
+      document.getElementById('voice-process-btn').style.display = 'block';
+    }
   } else {
     voiceTranscript = '';
+    document.getElementById('voice-edit-area').style.display = 'none';
+    document.getElementById('voice-live-text').style.display = 'block';
+    document.getElementById('voice-detected').style.display = 'none';
+    document.getElementById('voice-save-btn').style.display = 'none';
+    document.getElementById('voice-process-btn').style.display = 'none';
     const started = startListening(
       (text, isFinal) => {
         voiceTranscript = text;
-        document.getElementById('voice-text').textContent = text;
-        document.getElementById('voice-status').textContent = isFinal ? 'Transcripcion completa' : 'Escuchando...';
+        document.getElementById('voice-live-text').textContent = text;
+        document.getElementById('voice-status').textContent = 'Escuchando... (presiona Detener cuando termines)';
         if (isFinal) {
           btn.classList.remove('recording');
           btn.innerHTML = '<span class="mic-icon">&#127908;</span> Grabar';
-          processVoiceResult(text);
+          document.getElementById('voice-status').textContent = 'Grabacion detenida. Podes editar el texto.';
+          document.getElementById('voice-live-text').style.display = 'none';
+          document.getElementById('voice-edit-area').style.display = 'block';
+          document.getElementById('voice-edit-text').value = text;
+          document.getElementById('voice-process-btn').style.display = 'block';
         }
       },
       (error) => {
@@ -167,20 +186,21 @@ function toggleVoiceRecording() {
         btn.classList.remove('recording');
         btn.innerHTML = '<span class="mic-icon">&#127908;</span> Grabar';
       },
-      (listening) => {
-        if (!listening) {
-          btn.classList.remove('recording');
-          btn.innerHTML = '<span class="mic-icon">&#127908;</span> Grabar';
-        }
-      }
+      (listening) => {}
     );
     if (started) {
       btn.classList.add('recording');
       btn.innerHTML = '<span class="mic-icon">&#9899;</span> Detener';
-      document.getElementById('voice-status').textContent = 'Escuchando...';
-      document.getElementById('voice-text').innerHTML = '<span class="placeholder">Escuchando...</span>';
+      document.getElementById('voice-status').textContent = 'Escuchando... (presiona Detener cuando termines)';
+      document.getElementById('voice-live-text').innerHTML = '<span class="placeholder">Escuchando...</span>';
     }
   }
+}
+
+function processVoiceText() {
+  const text = document.getElementById('voice-edit-text').value.trim();
+  if (!text) { showToast('No hay texto para procesar'); return; }
+  processVoiceResult(text);
 }
 
 function processVoiceResult(text) {
@@ -194,6 +214,7 @@ function processVoiceResult(text) {
     <div class="detected-field"><span class="field-label">Prioridad</span><span class="field-value">${PRIORITIES[parsed.priority]}</span></div>
     ${parsed.tags.length ? `<div class="detected-field"><span class="field-label">Etiquetas</span><span class="field-value">${parsed.tags.join(', ')}</span></div>` : ''}
   `;
+  document.getElementById('voice-process-btn').style.display = 'none';
   document.getElementById('voice-save-btn').style.display = 'block';
   document.getElementById('voice-save-btn').onclick = async () => {
     await addTask({
@@ -321,8 +342,14 @@ function setView(view) {
 }
 
 function toggleCategoryFilter(cat) {
-  currentFilter.category = currentFilter.category === cat ? null : cat;
-  document.querySelectorAll('.filter-chip[data-category]').forEach(c => c.classList.toggle('active', c.dataset.category === currentFilter.category));
+  currentFilter.category = cat;
+  document.querySelectorAll('.filter-chip[data-category]').forEach(c => {
+    if (cat === null) {
+      c.classList.toggle('active', c.dataset.category === 'all');
+    } else {
+      c.classList.toggle('active', c.dataset.category === cat);
+    }
+  });
   renderTaskList();
 }
 

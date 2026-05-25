@@ -71,6 +71,7 @@
 
   <!-- FILTER BAR -->
   <div class="filter-bar">
+    <button class="filter-chip active" data-category="all" onclick="toggleCategoryFilter(null)">Todas</button>
     <button class="filter-chip" data-category="produccion" onclick="toggleCategoryFilter('produccion')">Produccion</button>
     <button class="filter-chip" data-category="qa" onclick="toggleCategoryFilter('qa')">QA</button>
     <button class="filter-chip" data-category="control_calidad" onclick="toggleCategoryFilter('control_calidad')">Control Calidad</button>
@@ -92,14 +93,19 @@
       <div class="modal-handle"></div>
       <h2>Agregar por voz</h2>
       <div class="voice-status" id="voice-status"></div>
-      <div class="voice-result" id="voice-text">
+      <div class="voice-result" id="voice-live-text">
         <span class="placeholder">Presiona Grabar y dicta tu tarea...</span>
+      </div>
+      <div class="form-group" id="voice-edit-area" style="display:none">
+        <label>Texto transcrito (podes editarlo)</label>
+        <textarea id="voice-edit-text" rows="3" style="width:100%;padding:12px;border-radius:8px;border:1px solid #334155;background:#334155;color:#f1f5f9;font-size:0.95rem;font-family:inherit;resize:vertical"></textarea>
       </div>
       <div style="display:flex;gap:10px;margin-bottom:16px">
         <button class="btn-voice" id="voice-rec-btn" onclick="toggleVoiceRecording()" style="flex:1">
           <span class="mic-icon">&#127908;</span> Grabar
         </button>
       </div>
+      <button class="btn-primary" id="voice-process-btn" style="display:none;margin-bottom:8px" onclick="processVoiceText()">Procesar texto</button>
       <div class="detected-fields" id="voice-detected" style="display:none"></div>
       <button class="btn-primary" id="voice-save-btn" style="display:none">Guardar tarea</button>
       <button class="btn-secondary" onclick="closeModal('voice-modal')">Cancelar</button>
