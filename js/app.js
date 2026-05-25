@@ -130,7 +130,6 @@ async function toggleTask(id) {
   await updateTask(id, updates);
   showToast(newStatus === 'completed' ? 'Tarea completada' : 'Tarea reactivada');
   renderApp();
-  scheduleMakeSync();
 }
 
 // ===== VOICE =====
@@ -232,7 +231,6 @@ function processVoiceResult(text) {
     closeModal('voice-modal');
     showToast('Tarea agregada');
     renderApp();
-    scheduleMakeSync();
   };
 }
 
@@ -285,7 +283,6 @@ async function saveTask() {
   }
   closeModal('task-modal');
   renderApp();
-  scheduleMakeSync();
 }
 
 async function removeTask() {
@@ -295,7 +292,6 @@ async function removeTask() {
   closeModal('task-modal');
   showToast('Tarea eliminada');
   renderApp();
-  scheduleMakeSync();
 }
 
 // ===== POSTPONE =====
@@ -339,7 +335,6 @@ async function postponeTask(option) {
   closeModal('postpone-modal');
   showToast('Tarea postergada');
   renderApp();
-  scheduleMakeSync();
 }
 
 // ===== FILTERS =====
@@ -539,32 +534,35 @@ async function generateDailyEmailHTML() {
   return html;
 }
 
-let syncTimer = null;
-function scheduleMakeSync() {
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => syncToMake(), 3000);
-}
-
 async function syncToMake() {
   try {
+    const lastSync = localStorage.getItem('taskvoz-last-sync');
+    const today = new Date().toISOString().split('T')[0];
+    if (lastSync === today) return;
+
+    const day = new Date().getDay();
+    if (day === 0 || day === 6) return;
+
     const all = await getAllTasks();
     const pending = all.filter(t => t.status === 'pending' || t.status === 'postponed');
     const emailBody = await generateDailyEmailHTML();
-    const today = new Date().toLocaleDateString('es-AR');
+    const todayDisplay = new Date().toLocaleDateString('es-AR');
     const total = pending.length;
 
     const payload = {
-      tasksJson: JSON.stringify(pending),
-      emailSubject: `TaskVoz — ${total} tarea${total !== 1 ? 's' : ''} pendiente${total !== 1 ? 's' : ''} (${today})`,
+      emailSubject: `TaskVoz — ${total} tarea${total !== 1 ? 's' : ''} pendiente${total !== 1 ? 's' : ''} (${todayDisplay})`,
       emailBody: emailBody,
       lastSync: new Date().toISOString()
     };
 
-    await fetch(MAKE_WEBHOOK_URL, {
+    const resp = await fetch(MAKE_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      mode: 'no-cors'
+      body: JSON.stringify(payload)
     });
+
+    if (resp.ok) {
+      localStorage.setItem('taskvoz-last-sync', today);
+    }
   } catch (e) {}
 }
