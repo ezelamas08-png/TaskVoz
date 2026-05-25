@@ -11,10 +11,13 @@ const CATEGORIES = {
 const PRIORITIES = { high: 'Alta', medium: 'Media', low: 'Baja' };
 const STATUSES = { pending: 'Pendiente', completed: 'Completada', overdue: 'Vencida', postponed: 'Postergada' };
 
+const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/7xcjgwdxt702lvre1oe6qqhultirr44y';
+
 document.addEventListener('DOMContentLoaded', async () => {
   await openDB();
   renderApp();
   updateOverdueTasks();
+  syncToMake();
 });
 
 async function updateOverdueTasks() {
@@ -127,6 +130,7 @@ async function toggleTask(id) {
   await updateTask(id, updates);
   showToast(newStatus === 'completed' ? 'Tarea completada' : 'Tarea reactivada');
   renderApp();
+  scheduleMakeSync();
 }
 
 // ===== VOICE =====
@@ -228,6 +232,7 @@ function processVoiceResult(text) {
     closeModal('voice-modal');
     showToast('Tarea agregada');
     renderApp();
+    scheduleMakeSync();
   };
 }
 
@@ -280,6 +285,7 @@ async function saveTask() {
   }
   closeModal('task-modal');
   renderApp();
+  scheduleMakeSync();
 }
 
 async function removeTask() {
@@ -289,6 +295,7 @@ async function removeTask() {
   closeModal('task-modal');
   showToast('Tarea eliminada');
   renderApp();
+  scheduleMakeSync();
 }
 
 // ===== POSTPONE =====
@@ -332,6 +339,7 @@ async function postponeTask(option) {
   closeModal('postpone-modal');
   showToast('Tarea postergada');
   renderApp();
+  scheduleMakeSync();
 }
 
 // ===== FILTERS =====
@@ -474,4 +482,89 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// ===== MAKE.COM SYNC =====
+async function generateDailyEmailHTML() {
+  const groups = await getPendingTasksGrouped();
+  const priorityLabel = { high: 'ALTA', medium: 'MEDIA', low: 'BAJA' };
+  const priorityColor = { high: '#ef4444', medium: '#f59e0b', low: '#10b981' };
+  const categoryLabel = {
+    produccion: 'Produccion', qa: 'QA', control_calidad: 'Control de Calidad',
+    mantenimiento: 'Mantenimiento', compras: 'Compras', direccion_tecnica: 'Dir. Tecnica',
+    gerencia: 'Gerencia', personal: 'Personal', otro: 'Otro'
+  };
+
+  const today = new Date().toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  let html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:20px;border-radius:12px">`;
+  html += `<h2 style="color:#1e293b;margin-bottom:4px">Buenos dias, Ezequiel</h2>`;
+  html += `<p style="color:#64748b;margin-top:0">${today}</p>`;
+
+  const total = groups.today.length + groups.overdue.length + groups.week.length + groups.noDate.length;
+  html += `<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">`;
+  html += `<div style="background:#3b82f6;color:#fff;padding:8px 16px;border-radius:8px;text-align:center"><strong>${groups.today.length}</strong><br><small>Hoy</small></div>`;
+  html += `<div style="background:#ef4444;color:#fff;padding:8px 16px;border-radius:8px;text-align:center"><strong>${groups.overdue.length}</strong><br><small>Vencidas</small></div>`;
+  html += `<div style="background:#8b5cf6;color:#fff;padding:8px 16px;border-radius:8px;text-align:center"><strong>${groups.week.length}</strong><br><small>Semana</small></div>`;
+  html += `<div style="background:#64748b;color:#fff;padding:8px 16px;border-radius:8px;text-align:center"><strong>${total}</strong><br><small>Total</small></div>`;
+  html += `</div>`;
+
+  function renderSection(title, items, color) {
+    if (!items.length) return '';
+    let s = `<div style="margin-bottom:16px"><h3 style="color:${color};margin-bottom:8px;font-size:14px">${title} (${items.length})</h3>`;
+    items.forEach(t => {
+      const pColor = priorityColor[t.priority] || '#64748b';
+      s += `<div style="background:#fff;border-left:4px solid ${pColor};padding:8px 12px;margin-bottom:6px;border-radius:4px">`;
+      s += `<strong style="color:#1e293b">${t.title}</strong>`;
+      s += `<br><small style="color:#64748b">[${priorityLabel[t.priority]}] ${categoryLabel[t.category] || t.category}`;
+      if (t.dueDate) s += ` — ${t.dueDate}`;
+      if (t.assignee) s += ` — ${t.assignee}`;
+      s += `</small></div>`;
+    });
+    s += `</div>`;
+    return s;
+  }
+
+  html += renderSection('VENCIDAS', groups.overdue, '#ef4444');
+  html += renderSection('PARA HOY', groups.today, '#3b82f6');
+  html += renderSection('ESTA SEMANA', groups.week, '#8b5cf6');
+  html += renderSection('SIN FECHA', groups.noDate, '#64748b');
+
+  if (total === 0) {
+    html += `<p style="text-align:center;color:#10b981;font-size:18px">No hay tareas pendientes</p>`;
+  }
+
+  html += `<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0">`;
+  html += `<p style="color:#94a3b8;font-size:12px;text-align:center">Generado por TaskVoz</p>`;
+  html += `</div>`;
+  return html;
+}
+
+let syncTimer = null;
+function scheduleMakeSync() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => syncToMake(), 3000);
+}
+
+async function syncToMake() {
+  try {
+    const all = await getAllTasks();
+    const pending = all.filter(t => t.status === 'pending' || t.status === 'postponed');
+    const emailBody = await generateDailyEmailHTML();
+    const today = new Date().toLocaleDateString('es-AR');
+    const total = pending.length;
+
+    const payload = {
+      tasksJson: JSON.stringify(pending),
+      emailSubject: `TaskVoz — ${total} tarea${total !== 1 ? 's' : ''} pendiente${total !== 1 ? 's' : ''} (${today})`,
+      emailBody: emailBody,
+      lastSync: new Date().toISOString()
+    };
+
+    await fetch(MAKE_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      mode: 'no-cors'
+    });
+  } catch (e) {}
 }
