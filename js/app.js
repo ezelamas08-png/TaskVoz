@@ -173,28 +173,32 @@ function toggleVoiceRecording() {
       (text, isFinal) => {
         voiceTranscript = text;
         document.getElementById('voice-live-text').textContent = text;
-        document.getElementById('voice-status').textContent = 'Escuchando... (presiona Detener cuando termines)';
-        if (isFinal) {
-          btn.classList.remove('recording');
-          btn.innerHTML = '<span class="mic-icon">&#127908;</span> Grabar';
-          document.getElementById('voice-status').textContent = 'Grabacion detenida. Podes editar el texto.';
-          document.getElementById('voice-live-text').style.display = 'none';
-          document.getElementById('voice-edit-area').style.display = 'block';
-          document.getElementById('voice-edit-text').value = text;
-          document.getElementById('voice-process-btn').style.display = 'block';
-        }
       },
       (error) => {
         document.getElementById('voice-status').textContent = 'Error: ' + error;
         btn.classList.remove('recording');
         btn.innerHTML = '<span class="mic-icon">&#127908;</span> Grabar';
       },
-      (listening) => {}
+      (listening) => {
+        if (!listening) {
+          btn.classList.remove('recording');
+          btn.innerHTML = '<span class="mic-icon">&#127908;</span> Grabar';
+          if (voiceTranscript) {
+            document.getElementById('voice-status').textContent = 'Grabacion detenida. Podes editar el texto.';
+            document.getElementById('voice-live-text').style.display = 'none';
+            document.getElementById('voice-edit-area').style.display = 'block';
+            document.getElementById('voice-edit-text').value = voiceTranscript;
+            document.getElementById('voice-process-btn').style.display = 'block';
+          } else {
+            document.getElementById('voice-status').textContent = 'No se detecto voz. Presiona Grabar para intentar de nuevo.';
+          }
+        }
+      }
     );
     if (started) {
       btn.classList.add('recording');
       btn.innerHTML = '<span class="mic-icon">&#9899;</span> Detener';
-      document.getElementById('voice-status').textContent = 'Escuchando... (presiona Detener cuando termines)';
+      document.getElementById('voice-status').textContent = 'Escuchando... (se detiene solo al terminar de hablar)';
       document.getElementById('voice-live-text').innerHTML = '<span class="placeholder">Escuchando...</span>';
     }
   }

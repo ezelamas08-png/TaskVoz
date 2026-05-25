@@ -1,4 +1,4 @@
-const CACHE_NAME = 'taskvoz-v5';
+const CACHE_NAME = 'taskvoz-v6';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
