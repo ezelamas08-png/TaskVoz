@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>TaskVoz</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <h1>Task<span>Voz</span></h1>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="toggleMenu()" title="Menu">&#9776;</button>
+    </div>
+  </header>
+
+  <!-- MENU -->
+  <div class="menu-overlay" id="menu-overlay" onclick="closeMenu()"></div>
+  <div class="menu" id="app-menu">
+    <button class="menu-item" onclick="copyEmailSummary()">&#128233; Copiar resumen diario</button>
+    <button class="menu-item" onclick="shareEmailSummary()">&#128228; Enviar resumen por correo</button>
+    <button class="menu-item" onclick="exportCSV()">&#128196; Exportar a CSV</button>
+    <button class="menu-item" onclick="exportJSON()">&#128190; Exportar backup (JSON)</button>
+    <button class="menu-item" onclick="importJSON()">&#128229; Importar backup</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="dashboard">
+    <div class="stat-card today" onclick="setView('pending')">
+      <div class="count" id="count-today">0</div>
+      <div class="label">Hoy</div>
+    </div>
+    <div class="stat-card overdue" onclick="setView('pending')">
+      <div class="count" id="count-overdue">0</div>
+      <div class="label">Vencidas</div>
+    </div>
+    <div class="stat-card week" onclick="setView('pending')">
+      <div class="count" id="count-week">0</div>
+      <div class="label">Semana</div>
+    </div>
+    <div class="stat-card done" onclick="setView('completed')">
+      <div class="count" id="count-done">0</div>
+      <div class="label">Listas</div>
+    </div>
+  </div>
+
+  <!-- VOICE + MANUAL -->
+  <div class="voice-section">
+    <button class="btn-voice" id="main-voice-btn" onclick="openVoiceModal()">
+      <span class="mic-icon">&#127908;</span> Agregar por voz
+    </button>
+    <button class="btn-manual" onclick="openManualModal()" title="Agregar manual">+</button>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="search-bar">
+    <input type="search" class="search-input" placeholder="Buscar tareas..." oninput="onSearch(this.value)">
+  </div>
+
+  <!-- VIEW TABS -->
+  <div class="view-tabs">
+    <button class="view-tab active" data-view="pending" onclick="setView('pending')">Pendientes</button>
+    <button class="view-tab" data-view="completed" onclick="setView('completed')">Completadas</button>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <button class="filter-chip" data-category="produccion" onclick="toggleCategoryFilter('produccion')">Produccion</button>
+    <button class="filter-chip" data-category="qa" onclick="toggleCategoryFilter('qa')">QA</button>
+    <button class="filter-chip" data-category="control_calidad" onclick="toggleCategoryFilter('control_calidad')">Control Calidad</button>
+    <button class="filter-chip" data-category="mantenimiento" onclick="toggleCategoryFilter('mantenimiento')">Mantenimiento</button>
+    <button class="filter-chip" data-category="compras" onclick="toggleCategoryFilter('compras')">Compras</button>
+    <button class="filter-chip" data-category="gerencia" onclick="toggleCategoryFilter('gerencia')">Gerencia</button>
+    <button class="filter-chip" data-category="personal" onclick="toggleCategoryFilter('personal')">Personal</button>
+  </div>
+
+  <!-- TASK LIST -->
+  <div class="task-list" id="task-list"></div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- VOICE MODAL -->
+  <div class="modal-overlay" id="voice-modal" onclick="if(event.target===this)closeModal('voice-modal')">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2>Agregar por voz</h2>
+      <div class="voice-status" id="voice-status"></div>
+      <div class="voice-result" id="voice-text">
+        <span class="placeholder">Presiona Grabar y dicta tu tarea...</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <button class="btn-voice" id="voice-rec-btn" onclick="toggleVoiceRecording()" style="flex:1">
+          <span class="mic-icon">&#127908;</span> Grabar
+        </button>
+      </div>
+      <div class="detected-fields" id="voice-detected" style="display:none"></div>
+      <button class="btn-primary" id="voice-save-btn" style="display:none">Guardar tarea</button>
+      <button class="btn-secondary" onclick="closeModal('voice-modal')">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- TASK MODAL (add/edit) -->
+  <div class="modal-overlay" id="task-modal" onclick="if(event.target===this)closeModal('task-modal')">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2 id="modal-title">Nueva tarea</h2>
+      <form id="task-form" onsubmit="event.preventDefault();saveTask()">
+        <div class="form-group">
+          <label>Titulo *</label>
+          <input type="text" id="field-title" required placeholder="Ej: Revisar batch record de formulacion">
+        </div>
+        <div class="form-group">
+          <label>Descripcion</label>
+          <textarea id="field-description" rows="2" placeholder="Detalles opcionales..."></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha objetivo</label>
+            <input type="date" id="field-date">
+          </div>
+          <div class="form-group">
+            <label>Prioridad</label>
+            <select id="field-priority">
+              <option value="high">Alta</option>
+              <option value="medium" selected>Media</option>
+              <option value="low">Baja</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Area</label>
+            <select id="field-category">
+              <option value="produccion">Produccion</option>
+              <option value="qa">QA</option>
+              <option value="control_calidad">Control de Calidad</option>
+              <option value="mantenimiento">Mantenimiento</option>
+              <option value="compras">Compras</option>
+              <option value="direccion_tecnica">Dir. Tecnica</option>
+              <option value="gerencia">Gerencia</option>
+              <option value="personal">Personal</option>
+              <option value="otro" selected>Otro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Responsable</label>
+            <input type="text" id="field-assignee" placeholder="Opcional">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Observaciones</label>
+          <textarea id="field-notes" rows="2" placeholder="Notas adicionales..."></textarea>
+        </div>
+        <button type="submit" class="btn-primary">Guardar</button>
+        <button type="button" class="btn-secondary" onclick="closeModal('task-modal')">Cancelar</button>
+        <button type="button" class="btn-danger" id="delete-task-btn" style="display:none" onclick="removeTask()">Eliminar tarea</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- POSTPONE MODAL -->
+  <div class="modal-overlay" id="postpone-modal" onclick="if(event.target===this)closeModal('postpone-modal')">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2>Postergar tarea</h2>
+      <div class="postpone-options">
+        <button class="postpone-btn" onclick="postponeTask('tomorrow')">&#128197; Manana</button>
+        <button class="postpone-btn" onclick="postponeTask('next-week')">&#128198; Proxima semana</button>
+        <button class="postpone-btn" onclick="postponeTask('pick')">&#128467; Elegir fecha</button>
+        <button class="postpone-btn" onclick="postponeTask('no-date')">&#10060; Sin fecha</button>
+      </div>
+      <button class="btn-secondary" style="margin-top:16px" onclick="closeModal('postpone-modal')">Cancelar</button>
+    </div>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script src="js/nlp.js"></script>
+  <script src="js/speech.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

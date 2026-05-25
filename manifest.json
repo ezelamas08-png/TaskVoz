@@ -1,0 +1,17 @@
+{
+  "name": "TaskVoz",
+  "short_name": "TaskVoz",
+  "description": "Organizador de tareas por voz",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%230f172a'/><circle cx='96' cy='80' r='24' fill='%233b82f6'/><rect x='88' y='104' width='16' height='32' rx='8' fill='%233b82f6'/><path d='M60 140 h72' stroke='%2310b981' stroke-width='6' stroke-linecap='round'/><path d='M60 156 h50' stroke='%2310b981' stroke-width='6' stroke-linecap='round'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
