@@ -536,12 +536,9 @@ async function generateDailyEmailHTML() {
 
 async function syncToMake() {
   try {
-    const lastSync = localStorage.getItem('taskvoz-last-sync');
-    const today = new Date().toISOString().split('T')[0];
-    if (lastSync === today) return;
-
-    const day = new Date().getDay();
-    if (day === 0 || day === 6) return;
+    const lastSync = localStorage.getItem('taskvoz-last-sync-ts');
+    const now = Date.now();
+    if (lastSync && (now - parseInt(lastSync)) < 4 * 60 * 60 * 1000) return;
 
     const all = await getAllTasks();
     const pending = all.filter(t => t.status === 'pending' || t.status === 'postponed');
@@ -562,7 +559,7 @@ async function syncToMake() {
     });
 
     if (resp.ok) {
-      localStorage.setItem('taskvoz-last-sync', today);
+      localStorage.setItem('taskvoz-last-sync-ts', now.toString());
     }
   } catch (e) {}
 }
