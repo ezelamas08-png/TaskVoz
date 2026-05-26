@@ -486,55 +486,163 @@ function escapeHtml(text) {
 // ===== MAKE.COM SYNC =====
 async function generateDailyEmailHTML() {
   const groups = await getPendingTasksGrouped();
-  const priorityLabel = { high: 'ALTA', medium: 'MEDIA', low: 'BAJA' };
-  const priorityColor = { high: '#ef4444', medium: '#f59e0b', low: '#10b981' };
+  const priorityLabel = { high: 'Alta', medium: 'Media', low: 'Baja' };
+  const priorityColor = { high: '#dc2626', medium: '#d97706', low: '#059669' };
+  const priorityBg = { high: '#fef2f2', medium: '#fffbeb', low: '#ecfdf5' };
+  const priorityIcon = { high: '\u{1F534}', medium: '\u{1F7E1}', low: '\u{1F7E2}' };
   const categoryLabel = {
     produccion: 'Produccion', qa: 'QA', control_calidad: 'Control de Calidad',
     mantenimiento: 'Mantenimiento', compras: 'Compras', direccion_tecnica: 'Dir. Tecnica',
     gerencia: 'Gerencia', personal: 'Personal', otro: 'Otro'
   };
+  const categoryColor = {
+    produccion: '#2563eb', qa: '#7c3aed', control_calidad: '#0891b2',
+    mantenimiento: '#ea580c', compras: '#16a34a', direccion_tecnica: '#4f46e5',
+    gerencia: '#be185d', personal: '#64748b', otro: '#6b7280'
+  };
 
   const today = new Date().toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  let html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:20px;border-radius:12px">`;
-  html += `<h2 style="color:#1e293b;margin-bottom:4px">Buenos dias, Ezequiel</h2>`;
-  html += `<p style="color:#64748b;margin-top:0">${today}</p>`;
-
   const total = groups.today.length + groups.overdue.length + groups.week.length + groups.noDate.length;
-  html += `<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">`;
-  html += `<div style="background:#3b82f6;color:#fff;padding:8px 16px;border-radius:8px;text-align:center"><strong>${groups.today.length}</strong><br><small>Hoy</small></div>`;
-  html += `<div style="background:#ef4444;color:#fff;padding:8px 16px;border-radius:8px;text-align:center"><strong>${groups.overdue.length}</strong><br><small>Vencidas</small></div>`;
-  html += `<div style="background:#8b5cf6;color:#fff;padding:8px 16px;border-radius:8px;text-align:center"><strong>${groups.week.length}</strong><br><small>Semana</small></div>`;
-  html += `<div style="background:#64748b;color:#fff;padding:8px 16px;border-radius:8px;text-align:center"><strong>${total}</strong><br><small>Total</small></div>`;
-  html += `</div>`;
 
-  function renderSection(title, items, color) {
+  let html = `
+<table width="100%" cellpadding="0" cellspacing="0" style="font-family:'Segoe UI',Arial,sans-serif;max-width:620px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0">
+  <!-- HEADER -->
+  <tr>
+    <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);padding:28px 32px;text-align:center">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="text-align:center">
+            <span style="font-size:28px;font-weight:700;color:#ffffff;letter-spacing:-0.5px">Task</span><span style="font-size:28px;font-weight:700;color:#60a5fa;letter-spacing:-0.5px">Voz</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align:center;padding-top:8px">
+            <span style="color:#94a3b8;font-size:14px">${today}</span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- GREETING -->
+  <tr>
+    <td style="padding:24px 32px 8px">
+      <p style="margin:0;font-size:18px;color:#1e293b;font-weight:600">Buenos dias, Ezequiel \u{1F44B}</p>
+      <p style="margin:6px 0 0;font-size:14px;color:#64748b">${total > 0 ? `Tenes <strong style="color:#1e293b">${total} tarea${total !== 1 ? 's' : ''}</strong> pendiente${total !== 1 ? 's' : ''} para hoy.` : 'No hay tareas pendientes. \u{1F389}'}</p>
+    </td>
+  </tr>
+
+  <!-- STATS -->
+  <tr>
+    <td style="padding:16px 32px 24px">
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+        <tr>
+          <td width="25%" style="background:#eff6ff;padding:14px 8px;text-align:center;border-right:1px solid #e2e8f0">
+            <div style="font-size:26px;font-weight:700;color:#2563eb">${groups.today.length}</div>
+            <div style="font-size:11px;color:#3b82f6;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Hoy</div>
+          </td>
+          <td width="25%" style="background:${groups.overdue.length > 0 ? '#fef2f2' : '#f8fafc'};padding:14px 8px;text-align:center;border-right:1px solid #e2e8f0">
+            <div style="font-size:26px;font-weight:700;color:${groups.overdue.length > 0 ? '#dc2626' : '#94a3b8'}">${groups.overdue.length}</div>
+            <div style="font-size:11px;color:${groups.overdue.length > 0 ? '#dc2626' : '#94a3b8'};font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">${groups.overdue.length > 0 ? '⚠️ Vencidas' : 'Vencidas'}</div>
+          </td>
+          <td width="25%" style="background:#f5f3ff;padding:14px 8px;text-align:center;border-right:1px solid #e2e8f0">
+            <div style="font-size:26px;font-weight:700;color:#7c3aed">${groups.week.length}</div>
+            <div style="font-size:11px;color:#7c3aed;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Semana</div>
+          </td>
+          <td width="25%" style="background:#f8fafc;padding:14px 8px;text-align:center">
+            <div style="font-size:26px;font-weight:700;color:#475569">${total}</div>
+            <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Total</div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>`;
+
+  function formatDateNice(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    return `${parts[2]}/${parts[1]}`;
+  }
+
+  function renderSection(title, icon, items, color, bgColor) {
     if (!items.length) return '';
-    let s = `<div style="margin-bottom:16px"><h3 style="color:${color};margin-bottom:8px;font-size:14px">${title} (${items.length})</h3>`;
+    let s = `
+  <!-- SECTION: ${title} -->
+  <tr>
+    <td style="padding:0 32px 20px">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="padding-bottom:10px">
+            <span style="font-size:13px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:1px">${icon} ${title} (${items.length})</span>
+          </td>
+        </tr>`;
     items.forEach(t => {
       const pColor = priorityColor[t.priority] || '#64748b';
-      s += `<div style="background:#fff;border-left:4px solid ${pColor};padding:8px 12px;margin-bottom:6px;border-radius:4px">`;
-      s += `<strong style="color:#1e293b">${t.title}</strong>`;
-      s += `<br><small style="color:#64748b">[${priorityLabel[t.priority]}] ${categoryLabel[t.category] || t.category}`;
-      if (t.dueDate) s += ` — ${t.dueDate}`;
-      if (t.assignee) s += ` — ${t.assignee}`;
-      s += `</small></div>`;
+      const pBg = priorityBg[t.priority] || '#f8fafc';
+      const pIcon = priorityIcon[t.priority] || '';
+      const catColor = categoryColor[t.category] || '#6b7280';
+      const catLabel = categoryLabel[t.category] || t.category;
+      const dateDisplay = formatDateNice(t.dueDate);
+
+      s += `
+        <tr>
+          <td style="padding-bottom:8px">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #e2e8f0;border-left:4px solid ${pColor};border-radius:8px;overflow:hidden">
+              <tr>
+                <td style="padding:12px 16px">
+                  <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:8px">${t.title}</div>
+                  <table cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding-right:6px">
+                        <span style="display:inline-block;background:${pBg};color:${pColor};font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px">${pIcon} ${priorityLabel[t.priority]}</span>
+                      </td>
+                      <td style="padding-right:6px">
+                        <span style="display:inline-block;background:#f0f9ff;color:${catColor};font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px">${catLabel}</span>
+                      </td>
+                      ${dateDisplay ? `<td style="padding-right:6px"><span style="display:inline-block;background:#f8fafc;color:#64748b;font-size:11px;font-weight:500;padding:2px 8px;border-radius:10px">\u{1F4C5} ${dateDisplay}</span></td>` : ''}
+                      ${t.assignee ? `<td><span style="display:inline-block;background:#f0fdf4;color:#16a34a;font-size:11px;font-weight:500;padding:2px 8px;border-radius:10px">\u{1F464} ${t.assignee}</span></td>` : ''}
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>`;
     });
-    s += `</div>`;
+    s += `
+      </table>
+    </td>
+  </tr>`;
     return s;
   }
 
-  html += renderSection('VENCIDAS', groups.overdue, '#ef4444');
-  html += renderSection('PARA HOY', groups.today, '#3b82f6');
-  html += renderSection('ESTA SEMANA', groups.week, '#8b5cf6');
-  html += renderSection('SIN FECHA', groups.noDate, '#64748b');
+  html += renderSection('Vencidas', '\u{1F6A8}', groups.overdue, '#dc2626', '#fef2f2');
+  html += renderSection('Para hoy', '\u{1F4CB}', groups.today, '#2563eb', '#eff6ff');
+  html += renderSection('Esta semana', '\u{1F4C6}', groups.week, '#7c3aed', '#f5f3ff');
+  html += renderSection('Sin fecha', '\u{1F4CC}', groups.noDate, '#64748b', '#f8fafc');
 
   if (total === 0) {
-    html += `<p style="text-align:center;color:#10b981;font-size:18px">No hay tareas pendientes</p>`;
+    html += `
+  <tr>
+    <td style="padding:32px;text-align:center">
+      <div style="font-size:48px;margin-bottom:8px">\u{2705}</div>
+      <p style="color:#059669;font-size:18px;font-weight:600;margin:0">No hay tareas pendientes</p>
+      <p style="color:#64748b;font-size:14px;margin:4px 0 0">Excelente trabajo!</p>
+    </td>
+  </tr>`;
   }
 
-  html += `<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0">`;
-  html += `<p style="color:#94a3b8;font-size:12px;text-align:center">Generado por TaskVoz</p>`;
-  html += `</div>`;
+  html += `
+  <!-- FOOTER -->
+  <tr>
+    <td style="background:#f8fafc;padding:20px 32px;border-top:1px solid #e2e8f0;text-align:center">
+      <p style="margin:0 0 4px;font-size:12px;color:#94a3b8">Generado automaticamente por <strong style="color:#64748b">TaskVoz</strong></p>
+      <p style="margin:0;font-size:11px;color:#cbd5e1">Abri la app para actualizar tus tareas</p>
+    </td>
+  </tr>
+</table>`;
+
   return html;
 }
 
