@@ -11,7 +11,7 @@ const CATEGORIES = {
 const PRIORITIES = { high: 'Alta', medium: 'Media', low: 'Baja' };
 const STATUSES = { pending: 'Pendiente', completed: 'Completada', overdue: 'Vencida', postponed: 'Postergada' };
 
-const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/7xcjgwdxt702lvre1oe6qqhultirr44y';
+const SYNC_API_URL = '/api/sync';
 
 document.addEventListener('DOMContentLoaded', async () => {
   await openDB();
@@ -544,9 +544,6 @@ async function syncToMake() {
     const today = new Date().toISOString().split('T')[0];
     if (lastSync === today) return;
 
-    const day = new Date().getDay();
-    if (day === 0 || day === 6) return;
-
     const all = await getAllTasks();
     const pending = all.filter(t => t.status === 'pending' || t.status === 'postponed');
     if (pending.length === 0) return;
@@ -561,7 +558,7 @@ async function syncToMake() {
       lastSync: new Date().toISOString()
     };
 
-    const resp = await fetch(MAKE_WEBHOOK_URL, {
+    const resp = await fetch(SYNC_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
