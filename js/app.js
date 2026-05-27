@@ -130,6 +130,7 @@ async function toggleTask(id) {
   await updateTask(id, updates);
   showToast(newStatus === 'completed' ? 'Tarea completada' : 'Tarea reactivada');
   renderApp();
+  scheduleSyncUpdate();
 }
 
 // ===== VOICE =====
@@ -235,6 +236,7 @@ function processVoiceResult(text) {
     closeModal('voice-modal');
     showToast('Tarea agregada');
     renderApp();
+    scheduleSyncUpdate();
   };
 }
 
@@ -287,6 +289,7 @@ async function saveTask() {
   }
   closeModal('task-modal');
   renderApp();
+  scheduleSyncUpdate();
 }
 
 async function removeTask() {
@@ -296,6 +299,7 @@ async function removeTask() {
   closeModal('task-modal');
   showToast('Tarea eliminada');
   renderApp();
+  scheduleSyncUpdate();
 }
 
 // ===== POSTPONE =====
@@ -339,6 +343,7 @@ async function postponeTask(option) {
   closeModal('postpone-modal');
   showToast('Tarea postergada');
   renderApp();
+  scheduleSyncUpdate();
 }
 
 // ===== FILTERS =====
@@ -418,6 +423,7 @@ async function importJSON() {
       const count = await importTasksJSON(text);
       showToast(`${count} tareas importadas`);
       renderApp();
+      scheduleSyncUpdate();
     } catch {
       showToast('Error al importar');
     }
@@ -646,11 +652,15 @@ async function generateDailyEmailHTML() {
   return html;
 }
 
-async function syncToMake() {
+let syncDebounceTimer = null;
+
+async function syncToMake(force) {
   try {
-    const lastSync = localStorage.getItem('taskvoz-last-sync');
-    const today = new Date().toISOString().split('T')[0];
-    if (lastSync === today) return;
+    if (!force) {
+      const lastSync = localStorage.getItem('taskvoz-last-sync');
+      const today = new Date().toISOString().split('T')[0];
+      if (lastSync === today) return;
+    }
 
     const all = await getAllTasks();
     const pending = all.filter(t => t.status === 'pending' || t.status === 'postponed');
@@ -673,7 +683,14 @@ async function syncToMake() {
     });
 
     if (resp.ok) {
+      const today = new Date().toISOString().split('T')[0];
       localStorage.setItem('taskvoz-last-sync', today);
     }
   } catch (e) {}
+}
+
+function scheduleSyncUpdate() {
+  clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(() => syncToMake(true), 3000);
+}
 }
