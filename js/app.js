@@ -693,4 +693,3 @@ function scheduleSyncUpdate() {
   clearTimeout(syncDebounceTimer);
   syncDebounceTimer = setTimeout(() => syncToMake(true), 3000);
 }
-}
