@@ -13,8 +13,25 @@ const STATUSES = { pending: 'Pendiente', completed: 'Completada', overdue: 'Venc
 
 const SYNC_API_URL = '/api/sync';
 
+async function tryRestoreFromBackup() {
+  try {
+    const all = await getAllTasks();
+    if (all.length > 0) return; // local DB has tasks, no need to restore
+    const resp = await fetch(SYNC_API_URL);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.tasks && data.tasks.length > 0) {
+      await importTasksJSON(JSON.stringify(data.tasks));
+      showToast(`${data.tasks.length} tareas restauradas del backup`);
+    }
+  } catch (e) {
+    // silent fail — offline or no backup
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   await openDB();
+  await tryRestoreFromBackup();
   renderApp();
   updateOverdueTasks();
   syncToMake();
@@ -664,7 +681,7 @@ async function syncToMake(force) {
 
     const all = await getAllTasks();
     const pending = all.filter(t => t.status === 'pending' || t.status === 'postponed');
-    if (pending.length === 0) return;
+    if (pending.length === 0 && all.length === 0) return;
 
     const emailBody = await generateDailyEmailHTML();
     const todayDisplay = new Date().toLocaleDateString('es-AR');
@@ -673,7 +690,8 @@ async function syncToMake(force) {
     const payload = {
       emailSubject: `TaskVoz — ${total} tarea${total !== 1 ? 's' : ''} pendiente${total !== 1 ? 's' : ''} (${todayDisplay})`,
       emailBody: emailBody,
-      lastSync: new Date().toISOString()
+      lastSync: new Date().toISOString(),
+      tasks: all
     };
 
     const resp = await fetch(SYNC_API_URL, {
